@@ -139,13 +139,7 @@ def group_cases():
         'error': [],
         'all_other': []
     }
-
-    count = 1
-
     for case in guys_cases:
-
-        if count < 3:
-                
             # Capture interpretation request ID and version
             ir_id = case['interpretation_request_id'].split('-')[0]
             ir_version = case['interpretation_request_id'].split('-')[1]
@@ -167,9 +161,6 @@ def group_cases():
             # Else if it's not negneg
             else:
                 grouped_cases['all_other'].append(case)
-
-            count += 1
-
     return grouped_cases
 
 def main():
