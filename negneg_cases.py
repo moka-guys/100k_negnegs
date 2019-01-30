@@ -18,6 +18,7 @@ optional arguments:
 
 import argparse
 from pyCIPAPI.interpretation_requests import get_interpretation_request_json, get_interpretation_request_list
+# Import InterpretedGenome from GeLReportModels v6.0
 from protocols.reports_6_0_0 import InterpretedGenome
 from collections import Counter
 
@@ -46,6 +47,7 @@ def group_vars_by_cip(interpreted_genomes_json):
     # omicia, congenica, nextcode, genomics_england, illumina, exomiser
     # There will be a separate interepreted genome for each cip used
     for ig in interpreted_genomes_json:
+        # Convert the interpreted genome JSON into InterpretedGenome object from GeL Report Models v6.0
         ig_obj = InterpretedGenome.fromJsonDict(ig['interpreted_genome_data'])
         # cip provider stored in the interpretationService field.
         # Store the list of reported variants for that cip
@@ -124,7 +126,7 @@ def group_cases():
     sent_to_gmcs = get_interpretation_request_list(last_status='sent_to_gmcs', sample_type='raredisease')
     report_generated = get_interpretation_request_list(last_status='report_generated', sample_type='raredisease')
     report_sent = get_interpretation_request_list(last_status='report_sent', sample_type='raredisease')
-    # Count number of times each proband ID occurs and store in dictionary, used later to identify cases with multiple interpretation requests.
+    # Count number of times each proband ID occurs and store in dictionary (key = proband ID, value = count), used later to identify cases with multiple interpretation requests.
     num_requests = Counter([case['proband'] for case in sent_to_gmcs + report_generated + report_sent])
     # Filter cases that are awaiting interpretation to only include Guys cases
     guys_cases = (case for case in sent_to_gmcs if ('RJ1' in case['sites'] or 'RJ101' in case['sites'] or 'GSTT' in case['sites']))
