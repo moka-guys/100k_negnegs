@@ -45,9 +45,8 @@ def group_vars_by_cip(interpreted_genomes_json):
     # Note this does not pull out CNVs/SVs
     vars_by_cip = {}
     # possible values for cip at time of writing:
-    # omicia, congenica, nextcode, genomics_england, illumina, exomiser
+    # omicia, congenica, nextcode, genomics_england_tiering, illumina, exomiser
     # There will be a separate interepreted genome for each cip used
-
     for ig in interpreted_genomes_json:
         # Convert the interpreted genome JSON into InterpretedGenome object from GeL Report Models v6.0
         ig_obj = InterpretedGenome.fromJsonDict(ig['interpreted_genome_data'])
@@ -98,7 +97,7 @@ def group_vars_by_tier(variants_json):
             tiered_vars[f'TIER{top_rank_tier}'].append(variant)
     return tiered_vars
 
-def is_neg_neg(ir_json, cips=[]):
+def is_neg_neg(ir_json):
     """
     Checks if a case is a negative negative (no variants other than tier 3)
     Args:
@@ -119,8 +118,8 @@ def is_neg_neg(ir_json, cips=[]):
     num_other = len(gel_tiered_vars['OTHER'])
     # Initialise cip_candidates variable to zero, then loop through cips counting variants
     cip_candidates = 0
-    for cip in cips:
-        if cip in vars_by_cip:
+    for cip in vars_by_cip:
+        if cip not in ['genomics_england_tiering', 'exomiser']:
             # There may be multiple interpreted genomes for a single CIP, so take the one with the highest cip_version number
             max_version = max(vars_by_cip[cip].keys())
             cip_candidates += len(vars_by_cip[cip][max_version])
@@ -148,7 +147,6 @@ def group_cases():
     # 'negnegs_multiple_requests' = negneg cases where there are other active or reported interpretation requests for that patient (which may not be negneg)
     # 'error' = Error encountered when trying to parse the CIP-API data for this case. Some early pilot cases have broken formatting so they end up here.
     # 'all_other' = Everything else.
-
     grouped_cases = {
         'negnegs_one_request': [],
         'negnegs_multiple_requests': [],
@@ -165,7 +163,7 @@ def group_cases():
         # Check if case is a negneg
         # Some very old pilot cases have broken formatting causing error here, so catch these with try/except
         try:
-            negneg = is_neg_neg(ir_json, cips=['omicia', 'congenica'])
+            negneg = is_neg_neg(ir_json)
         except:
             grouped_cases['error'].append(case)
             continue
