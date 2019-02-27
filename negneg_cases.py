@@ -57,8 +57,9 @@ def group_vars_by_cip(interpreted_genomes_json):
             cip_version = int(ig['cip_version'])
             # If cip not already in dictionary, add it in with an empty dictionary as value
             vars_by_cip[cip] = vars_by_cip.setdefault(cip, {})
-            # Add the variants for that cip/version to dicitionary.
-            # If the same cip/version is already there, just append to the existing list.
+            # Add the variants for that cip/version to dictionary.
+            # If the same cip/version is already there (shouldn't ever happen but just a failsafe), 
+            # append to the existing list instead of overwriting.
             vars_by_cip[cip][cip_version] = vars_by_cip[cip].setdefault(cip_version, []) + ig_obj.variants
     return vars_by_cip
 
