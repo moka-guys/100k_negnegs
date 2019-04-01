@@ -160,7 +160,12 @@ def group_cases():
         ir_version = case['interpretation_request_id'].split('-')[1]
         participant_id = case['proband']
         # Return JSON from CIP API, use report models v6
-        ir_json = get_interpretation_request_json(ir_id, ir_version, reports_v6=True)
+        try:
+            ir_json = get_interpretation_request_json(ir_id, ir_version, reports_v6=True)
+        except:
+            print(case['interpretation_request_id'])
+            grouped_cases['error'].append(case)
+            continue
         # Check if case is a negneg
         # Some very old pilot cases have broken formatting causing error here, so catch these with try/except
         try:
