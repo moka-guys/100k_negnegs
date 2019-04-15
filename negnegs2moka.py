@@ -39,6 +39,41 @@ def process_arguments():
     # Return the arguments
     return parser.parse_args()
 
+def run_case_tests(case):
+    # Check patient is in Probands_100k table
+    if not case.internalPatientID:
+        raise Exception("No InternalPatientID found in Probands_100k table")
+    # Check patient status is either complete (4) or 100K (1202218839) 
+    # If patient is currently having other testing in the lab, overwriting the patient status could cause them to drop off worksheets etc.
+    if case.patient_status not in (4, 1202218839):
+        raise Exception("Patient status is not 'Complete' or '100K'. Is this patient undergoing other testing in the lab?")
+    # Check there's a clinician in the Probands_100K table
+    if not case.clinicianID:
+        raise Exception("No referring clinician found in Probands_100k table")
+
+def run_ngstest_tests(case, ngstest):
+    # Check automated reporting of case isn't blocked
+    if ngstest.BlockAutomatedReporting != 0:
+        raise Exception("Automated reporting of this case is blocked")
+    # Check interpretation request IDs match
+    if ngstest.IRID != case.intrequestID:
+        raise Exception("Interpretation request ID in CIP-API and existing NGSTest request do not match")
+    # Check participant IDs match
+    if int(ngstest.GELProbandID) != int(case.participantID):
+        raise Exception("Participant ID in CIP-API and existing NGSTest request do not match")
+    # Check that the exisiting test doesn't already have a different (i.e. not negneg) result code
+    if ngstest.ResultCode and ngstest.ResultCode != 1189679668:
+        raise Exception("Existing NGSTest request has a different result code to NN")
+    # Check that there isn't already a different referring clinician associated with the test
+    if ngstest.BookBy != case.clinicianID:
+        raise Exception("Existing NGSTest request has a different referring clinician")
+    # Check that test status isn't not required
+    if ngstest.StatusID == 1202218787:
+        raise Exception("NGSTest request already exists with status of NOT REQUIRED")
+    # If the existing test already has Check1ID but no result code, or vice versa, print error
+    if (ngstest.Check1ID and not ngstest.ResultCode) or (not ngstest.Check1ID and ngstest.ResultCode):
+        raise Exception("Existing test either has Check1ID with no result code, or result code with no Check1ID")
+
 class MokaConnector(object):
     """
     Connection to Moka database for use by other functions
@@ -55,7 +90,7 @@ class MokaConnector(object):
     def __del__(self):
         self.cnxn.close()
 
-class Case100k(object):
+class Case100kMoka(object):
     """
     Represents a 100k case. Instantiated using a GeL participant ID and interpretation request ID (<irid>-<version>)
     """
@@ -218,59 +253,38 @@ def book_in_moka(cases, mokaconn, log_file):
     print_log(log_file, 'GeLParticipantID', 'InterpretationRequestID', 'PRU', 'Status', 'Log')
     for case in cases:
         case.get_moka_details(mokaconn.cursor)
-        # Check patient is in Probands_100k table
-        if not case.internalPatientID:
-            print_log(log_file, case.participantID, case.intrequestID, case.pru, "ERROR", "No InternalPatientID found in Probands_100k table")
-        # Check patient status is either complete (4) or 100K (1202218839) 
-        # If patient is currently having other testing in the lab, overwriting the patient status could cause them to drop off worksheets etc.
-        elif case.patient_status not in (4, 1202218839):
-            print_log(log_file, case.participantID, case.intrequestID, case.pru, "ERROR", "Patient status is not 'Complete' or '100K'. Is this patient undergoing other testing in the lab?")
-        # Check there's a clinician in the Probands_100K table
-        elif not case.clinicianID:
-            print_log(log_file, case.participantID, case.intrequestID, case.pru, "ERROR", "No referring clinician found in Probands_100k table")
-        # Make sure there aren't  multiple 100k NGS requests for that patient
-        elif len(case.ngstests) > 1:
-            print_log(log_file, case.participantID, case.intrequestID, case.pru, "ERROR", "Multiple 100k NGStest request found for this patient")
-        # If there are no NGStests create one with negneg result code (1189679668)
-        elif len(case.ngstests) == 0:
+        # Test that required case details are in Moka
+        try:
+            run_case_tests(case)
+        # If tests fail, print error to log file and skip to next case
+        except Exception as err:
+            print_log(log_file, case.participantID, case.intrequestID, case.pru, "ERROR", err)
+            continue        
+        if len(case.ngstests) > 1:
+            # If there are multiple 100k NGS requests for that patient, print error to log file
+            print_log(log_file, case.participantID, case.intrequestID, case.pru, "ERROR", "Multiple 100k NGStest request found for this patient")        
+        elif len(case.ngstests) < 1:
+            # If there are currently no NGStest requests in Moka, create one from scratch...
             case.add_ngstest(mokaconn.cursor, 1189679668)
             print_log(log_file, case.participantID, case.intrequestID, case.pru, "SUCCESS", "Created new NGSTest request")
-        # If there's already a 100k NGS request...
+        # If there's already one 100k NGS request in Moka, check to see if we can use it...       
         elif len(case.ngstests) == 1:
             ngstest = case.ngstests[0]
-            # Check automated reporting of case isn't blocked
-            if ngstest.BlockAutomatedReporting != 0:
-                print_log(log_file, case.participantID, case.intrequestID, case.pru, "ERROR", "Automated reporting of this case is blocked")            
-            # Check interpretation request IDs match
-            elif ngstest.IRID != case.intrequestID:
-                print_log(log_file, case.participantID, case.intrequestID, case.pru, "ERROR", "Interpretation request ID in CIP-API and existing NGSTest request do not match")
-            # Check participant IDs match
-            elif int(ngstest.GELProbandID) != int(case.participantID):
-                print_log(log_file, case.participantID, case.intrequestID, case.pru, "ERROR", "Participant ID in CIP-API and existing NGSTest request do not match")
-            # Check that the exisiting test doesn't already have a different (i.e. not negneg) result code
-            elif ngstest.ResultCode and ngstest.ResultCode != 1189679668:
-                print_log(log_file, case.participantID, case.intrequestID, case.pru, "ERROR", "Existing NGSTest request has a different result code to NN")
-            # Check that there isn't already a different referring clinician associated with the test
-            elif ngstest.BookBy != case.clinicianID:
-                print_log(log_file, case.participantID, case.intrequestID, case.pru, "ERROR", "Existing NGSTest request has a different referring clinician")
-            # Check if test status is complete
-            elif ngstest.StatusID == 4:
-                print_log(log_file, case.participantID, case.intrequestID, case.pru, "SUCCESS", "NGSTest request already exists with matching details and status of COMPLETE")
-            # Check that test status isn't not required
-            elif ngstest.StatusID == 1202218787:
-                print_log(log_file, case.participantID, case.intrequestID, case.pru, "ERROR", "NGSTest request already exists with status of NOT REQUIRED")          
-            # If Check1 and result code is empty, add negneg result code
-            elif not ngstest.Check1ID and not ngstest.ResultCode:
-                case.set_result_code(mokaconn.cursor, ngstest, 1189679668)
-                print_log(log_file, case.participantID, case.intrequestID, case.pru, "SUCCESS", "Added result code to existing NGSTest request")
-            # If the existing test already has Check1ID but no result code, or vice versa, print error
-            elif (ngstest.Check1ID and not ngstest.ResultCode) or (not ngstest.Check1ID and ngstest.ResultCode):
-                print_log(log_file, case.participantID, case.intrequestID, case.pru, "ERROR", "Existing test either has Check1ID with no result code, or result code with no Check1ID")
-            # If case with all matching details already in Moka, skip over it
+            try:
+                run_ngstest_tests(case, ngstest)
+            except Exception as err:
+                print_log(log_file, case.participantID, case.intrequestID, case.pru, "ERROR", err)
+            # If test are passed...
             else:
-                print_log(log_file, case.participantID, case.intrequestID, case.pru, "SUCCESS", "NGSTest request already exists with matching details")
-        # Above criteria should catch everything, but if not catch here and print error
+                # If there's not currently a result code, add one:
+                if not ngstest.ResultCode:
+                    case.set_result_code(mokaconn.cursor, ngstest, 1189679668)
+                    print_log(log_file, case.participantID, case.intrequestID, case.pru, "SUCCESS", "Added result code to existing NGSTest request")
+                # Otherwise all details match and no updates required, so skip
+                else:
+                    print_log(log_file, case.participantID, case.intrequestID, case.pru, "SKIP", "NGSTest request already exists with matching details")       
         else:
+            # Above criteria should catch everything, but if not catch here and print error
             print_log(log_file, case.participantID, case.intrequestID, case.pru, "ERROR", "An unknow error has occurred")
 
 def main():
@@ -282,7 +296,7 @@ def main():
             sys.exit('Input file does not contain expected header row. Exiting')
     # Create a list of 100k case objects for negneg cases with only one interpretation request
     negnegs = negnegs_one_request(args.input_file)
-    cases = [Case100k(participantID, intrequestID) for participantID, intrequestID in negnegs]
+    cases = [Case100kMoka(participantID, intrequestID) for participantID, intrequestID in negnegs]
     # Create a Moka connection
     mokaconn = MokaConnector()
     # Book cases into moka
