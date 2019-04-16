@@ -40,6 +40,9 @@ def process_arguments():
     return parser.parse_args()
 
 def run_case_tests(case):
+    """
+    Patient/case level tests to check if case suitable for automated booking in and reporting
+    """
     # Check patient is in Probands_100k table
     if not case.internalPatientID:
         raise Exception("No InternalPatientID found in Probands_100k table")
@@ -52,6 +55,9 @@ def run_case_tests(case):
         raise Exception("No referring clinician found in Probands_100k table")
 
 def run_ngstest_tests(case, ngstest):
+    """
+    NGStest level tests to check if case suitable for automated booking in and reporting
+    """
     # Check automated reporting of case isn't blocked
     if ngstest.BlockAutomatedReporting != 0:
         raise Exception("Automated reporting of this case is blocked")
