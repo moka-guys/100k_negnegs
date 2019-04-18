@@ -22,16 +22,18 @@ from pyCIPAPI.interpretation_requests import get_interpretation_request_json, ge
 from protocols.reports_6_0_0 import InterpretedGenome
 from collections import Counter
 
+
 def process_arguments():
     """
     Uses argparse module to define and handle command line input arguments and help menu
     """
     # Create ArgumentParser object. Description message will be displayed as part of help message if script is run with -h flag
     parser = argparse.ArgumentParser(description='Pulls Guys 100k cases from CIP-API and outputs file showing which are negative negatives')
-	# Define the arguments that will be taken.
+    # Define the arguments that will be taken.
     parser.add_argument('-o', '--output_file', required=True, help='Output file (tsv)')
     # Return the arguments
     return parser.parse_args()
+
 
 def group_vars_by_cip(interpreted_genomes_json):
     """
@@ -58,10 +60,11 @@ def group_vars_by_cip(interpreted_genomes_json):
             # If cip not already in dictionary, add it in with an empty dictionary as value
             vars_by_cip[cip] = vars_by_cip.setdefault(cip, {})
             # Add the variants for that cip/version to dictionary.
-            # If the same cip/version is already there (shouldn't ever happen but just a failsafe), 
+            # If the same cip/version is already there (shouldn't ever happen but just a failsafe)
             # append to the existing list instead of overwriting.
             vars_by_cip[cip][cip_version] = vars_by_cip[cip].setdefault(cip_version, []) + ig_obj.variants
     return vars_by_cip
+
 
 def group_vars_by_tier(variants_json):
     """
@@ -98,6 +101,7 @@ def group_vars_by_tier(variants_json):
             tiered_vars[f'TIER{top_rank_tier}'].append(variant)
     return tiered_vars
 
+
 def is_neg_neg(ir_json):
     """
     Checks if a case is a negative negative (no variants other than tier 3)
@@ -128,6 +132,7 @@ def is_neg_neg(ir_json):
     if sum((num_tier1, num_tier2, num_other, cip_candidates)) == 0:
         return True
     return False
+
 
 def group_cases():
     """
@@ -160,7 +165,11 @@ def group_cases():
         ir_version = case['interpretation_request_id'].split('-')[1]
         participant_id = case['proband']
         # Return JSON from CIP API, use report models v6
-        ir_json = get_interpretation_request_json(ir_id, ir_version, reports_v6=True)
+        try:
+            ir_json = get_interpretation_request_json(ir_id, ir_version, reports_v6=True)
+        except:
+            grouped_cases['error'].append(case)
+            continue
         # Check if case is a negneg
         # Some very old pilot cases have broken formatting causing error here, so catch these with try/except
         try:
@@ -177,6 +186,7 @@ def group_cases():
         else:
             grouped_cases['all_other'].append(case)
     return grouped_cases
+
 
 def main():
     # Get command line arguments
