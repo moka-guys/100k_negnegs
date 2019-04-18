@@ -273,22 +273,23 @@ def book_in_moka(cases, mokaconn, log_file):
             # If there are currently no NGStest requests in Moka, create one from scratch...
             case.add_ngstest(mokaconn.cursor, 1189679668)
             print_log(log_file, case.participantID, case.intrequestID, case.pru, "SUCCESS", "Created new NGSTest request")
-        # If there's already one 100k NGS request in Moka, check to see if we can use it...       
+        # If there's already one 100k NGS request in Moka...       
         elif len(case.ngstests) == 1:
             ngstest = case.ngstests[0]
+            # Run NGStest through tests to check if details as expected.
             try:
                 run_ngstest_tests(case, ngstest)
+            # If tests fail, print error to log file and skip to next case
             except Exception as err:
                 print_log(log_file, case.participantID, case.intrequestID, case.pru, "ERROR", err)
-            # If test are passed...
+                continue
+            # If there's not currently a result code, add one:
+            if not ngstest.ResultCode:
+                case.set_result_code(mokaconn.cursor, ngstest, 1189679668)
+                print_log(log_file, case.participantID, case.intrequestID, case.pru, "SUCCESS", "Added result code to existing NGSTest request")
+            # Otherwise all details match and no updates required, so skip
             else:
-                # If there's not currently a result code, add one:
-                if not ngstest.ResultCode:
-                    case.set_result_code(mokaconn.cursor, ngstest, 1189679668)
-                    print_log(log_file, case.participantID, case.intrequestID, case.pru, "SUCCESS", "Added result code to existing NGSTest request")
-                # Otherwise all details match and no updates required, so skip
-                else:
-                    print_log(log_file, case.participantID, case.intrequestID, case.pru, "SKIP", "NGSTest request already exists with matching details")       
+                print_log(log_file, case.participantID, case.intrequestID, case.pru, "SKIP", "NGSTest request already exists with matching details")       
         else:
             # Above criteria should catch everything, but if not catch here and print error
             print_log(log_file, case.participantID, case.intrequestID, case.pru, "ERROR", "An unknow error has occurred")
