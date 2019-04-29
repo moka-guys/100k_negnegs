@@ -174,6 +174,7 @@ class Case100kMoka(object):
                 ).format(
                     internalPatientID=self.internalPatientID,
                     resultcode_name=resultcode_name,
+                    status_name=status_name,
                     intrequestID=self.intrequestID,
                     today_date=datetime.datetime.now().strftime(r'%Y%m%d %H:%M:%S %p'),
                     username=os.getenv('username'),
