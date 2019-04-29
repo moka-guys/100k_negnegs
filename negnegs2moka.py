@@ -143,9 +143,9 @@ class Case100kMoka(object):
             # Capture matching NGSTests
             self.ngstests = cursor.execute(sql).fetchall()
 
-    def set_result_code(self, cursor, ngstest, resultcode):
+    def set_result_code(self, cursor, ngstest, resultcode, status):
         """
-        Update result code for a supplied NGStest.
+        Update result code and status for a supplied NGStest.
         
         Args:
             ngstest: An NGSTest pyodbc object (as stored in list self.ngstests)
@@ -154,22 +154,27 @@ class Case100kMoka(object):
         # Only execute if internal patient ID is known.
         if self.internalPatientID:
             # Update the result code and set Moka as Checker1
-            sql = "UPDATE NGSTest SET ResultCode = {resultcode}, Check1ID = 1201865448, Check1Date = '{today_date}' WHERE NGSTestID = {ngstestid}".format(
+            sql = "UPDATE NGSTest SET ResultCode = {resultcode}, StatusID = {status}, Check1ID = 1201865448, Check1Date = '{today_date}' WHERE NGSTestID = {ngstestid}".format(
                 today_date=datetime.datetime.now().strftime(r'%Y%m%d %H:%M:%S %p'),
-                resultcode=resultcode, 
+                resultcode=resultcode,
+                status=status,
                 ngstestid=ngstest.NGSTestID,
                 )
             cursor.execute(sql)
             # Get the human readable result code for recording in patient log
             sql = "SELECT ResultCode FROM ResultCode WHERE ResultCodeID = {resultcode}".format(resultcode=resultcode)
             resultcode_name = cursor.execute(sql).fetchone().ResultCode
+            # Get the human readable status for recording in patient log
+            sql = "SELECT Status FROM Status WHERE StatusID = {status}".format(status=status)
+            status_name = cursor.execute(sql).fetchone().Status
             # Update the patient log
             sql = (
                 "INSERT INTO PatientLog (InternalPatientID, LogEntry, Date, Login, PCName) "
-                "VALUES ({internalPatientID},  'NGS: NGSTest status updated to {resultcode_name} for 100k interpretation request: {intrequestID}', '{today_date}', '{username}', '{computer}');"
+                "VALUES ({internalPatientID},  'NGS: NGSTest result code updated to {resultcode_name} and status updated to {status_name} for 100k interpretation request: {intrequestID}', '{today_date}', '{username}', '{computer}');"
                 ).format(
                     internalPatientID=self.internalPatientID,
                     resultcode_name=resultcode_name,
+                    status_name=status_name,
                     intrequestID=self.intrequestID,
                     today_date=datetime.datetime.now().strftime(r'%Y%m%d %H:%M:%S %p'),
                     username=os.getenv('username'),
@@ -210,7 +215,7 @@ class Case100kMoka(object):
             # Create NGStest and record in patient log - put Moka in as Check1
             sql = (
                 "INSERT INTO NGSTest (InternalPatientID, ReferralID, StatusID, DateRequested, BookBy, BookingAuthorisedByID, Service, GELProbandID, IRID, ResultCode, Check1ID, Check1Date) "
-                "Values ({internalPatientID}, 1199901218, 2, '{today_date}', '{clinicianID}', 1201865434, 0, '{participantID}', '{intrequestID}', {resultcode}, 1201865448, '{today_date}');"
+                "Values ({internalPatientID}, 1199901218, 1202218811, '{today_date}', '{clinicianID}', 1201865434, 0, '{participantID}', '{intrequestID}', {resultcode}, 1201865448, '{today_date}');"
                 ).format(
                     internalPatientID=self.internalPatientID,
                     today_date=datetime.datetime.now().strftime(r'%Y%m%d %H:%M:%S %p'),
@@ -283,9 +288,9 @@ def book_in_moka(cases, mokaconn, log_file):
             except Exception as err:
                 print_log(log_file, case.participantID, case.intrequestID, case.pru, "ERROR", err)
                 continue
-            # If there's not currently a result code, add one:
+            # If there's not currently a result code, add negneg result code and set status to Negative report:
             if not ngstest.ResultCode:
-                case.set_result_code(mokaconn.cursor, ngstest, 1189679668)
+                case.set_result_code(mokaconn.cursor, ngstest, resultcode=1189679668, status=1202218811)
                 print_log(log_file, case.participantID, case.intrequestID, case.pru, "SUCCESS", "Added result code to existing NGSTest request")
             # Otherwise all details match and no updates required, so skip
             else:
