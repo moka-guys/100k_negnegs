@@ -24,19 +24,19 @@ Requirements:
 
 * Python 3.6
 * Access to CIPAPI
-* JellyPy (in PYTHONPATH)
-* GelReportModels (v6 or higher)
+* JellyPy
+* GelReportModels
 
-On `SV-TE-GENAPP01` activate the `jellypy_py3` conda environment so that above requirements are met:
+On `SV-PR-GENAPP01` activate the `100k_negnegs` conda environment so that above requirements are met:
 
 ```
-source activate jellypy_py3
+conda activate `100k_negnegs`
 ```
 
 Run the script:
 
 ```
-python /home/mokaguys/Apps/100k_negnegs/negneg_cases.py -i INPUT_FILE
+python /usr/local/src/mokaguys/Apps/100k_negnegs/negneg_cases.py -i INPUT_FILE
 ```
 
 ## negnegs2moka.py
