@@ -235,13 +235,13 @@ def main():
     out_file = args.output_file
     # Open output file and write headers
     with open(out_file, 'w') as output_file:
-        output_file.write('participant_ID\tCIP_ID\tgroup\n')
+        output_file.write('participant_ID\tCIP_ID\tassembly\tgroup\n')
         # Group cases according to variants found in CIP-API
         grouped_cases = group_cases()
         # Write the results to a tab separated file
         for group in grouped_cases.keys():
             for case in grouped_cases[group]:
-                output_file.write(f"{case['proband']}\t{case['interpretation_request_id']}\t{group}\n")
+                output_file.write(f"{case['proband']}\t{case['interpretation_request_id']}\t{case['assembly']}\t{group}\n")
 
 if __name__ == '__main__':
     main()
