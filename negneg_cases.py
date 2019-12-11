@@ -17,7 +17,8 @@ optional arguments:
 """
 
 import argparse
-from pyCIPAPI.interpretation_requests import get_interpretation_request_json, get_interpretation_request_list
+from distutils.version import StrictVersion
+from pyCIPAPI.interpretation_requests import get_interpretation_request_json, get_interpreted_genome_for_case, get_interpretation_request_list
 # Import InterpretedGenome from GeLReportModels v6.0
 from protocols.reports_6_0_0 import InterpretedGenome
 from collections import Counter
@@ -105,12 +106,45 @@ def group_vars_by_tier(variants_json):
             tiered_vars[f'TIER{top_rank_tier}'].append(variant)
     return tiered_vars
 
+def rare_tierA_SVs(interpreted_genome_json):
+    """
+    Returns list of tier A structural variants with population frequency <1% 
+    Args:
+        interpreted_genomes_json: interpreted genome JSON from CIP API
+    Returns:
+        List of GeL report model v6 StructuralVariant objects
+    """
+    # List to hold rare (<1%) tier A SVs
+    tiera_svs = []
+    ig_obj = InterpretedGenome.fromJsonDict(interpreted_genome_json['interpreted_genome_data'])
+    if ig_obj.structuralVariants:
+        # GeL only report SVs since GeL tiering version 1.0.14, so ignore any earlier versions
+        if StrictVersion(ig_obj.softwareVersions["gel-tiering"]) >= StrictVersion('1.0.14'): 
+            for sv in ig_obj.structuralVariants:
+                added_tiera_list = False
+                for event in sv.reportEvents:
+                    if event.tier == 'TIERA' and not added_tiera_list:
+                        # Exclude common SVs (>1% allele frequency)
+                        # Note frequencies not reported for sex chromosomes, so all tier A sex chromosome SVs will need investigating.
+                        if sv.variantAttributes.alleleFrequencies:
+                            allele_frequencies = [x.alternateFrequency for x in sv.variantAttributes.alleleFrequencies]                            
+                            if max(allele_frequencies) <= 0.01:
+                                tiera_svs.append(sv)
+                                added_tiera_list = True
+                        # Else if frequencies not reported (e.g. sex chromosomes), can't exclude so add to list
+                        else:
+                            tiera_svs.append(sv)
+                            added_tiera_list = True
+    return tiera_svs
 
-def is_neg_neg(ir_json):
+
+def is_neg_neg(ir_json, ir_id, ir_version):
     """
     Checks if a case is a negative negative (no variants other than tier 3)
     Args:
         ir_json: Interpretation request JSON from the CIP-API
+        ir_id: Interpretation request ID
+        ir_version:
         cips: List of CIPs that should be checked for candidate variants (e.g. 'omicia', 'genomics_england', 'exomiser' etc)
     Returns:
         Boolean: True if negative negative, False if not.
@@ -121,10 +155,13 @@ def is_neg_neg(ir_json):
     max_version = max(vars_by_cip['genomics_england_tiering'].keys())
     # Group variants from genomics_england_tiering by tier
     gel_tiered_vars = group_vars_by_tier(vars_by_cip['genomics_england_tiering'][max_version])
+    # Get rare (<1%) tier A SVs
+    rare_tiera_SV_list = rare_tierA_SVs(get_interpreted_genome_for_case(ir_id, ir_version, 'genomics_england_tiering')) 
     # negneg if no non-tier3 or cip candidate variants
     num_tier1 = len(gel_tiered_vars['TIER1'])
     num_tier2 = len(gel_tiered_vars['TIER2'])
     num_other = len(gel_tiered_vars['OTHER'])
+    num_tiera_sv = len(rare_tiera_SV_list)
     # Initialise cip_candidates variable to zero, then loop through cips counting variants
     cip_candidates = 0
     for cip in vars_by_cip:
@@ -133,7 +170,7 @@ def is_neg_neg(ir_json):
             max_version = max(vars_by_cip[cip].keys())
             cip_candidates += len(vars_by_cip[cip][max_version])
     # Return true if it's a negative negative, otherwise return false.
-    if sum((num_tier1, num_tier2, num_other, cip_candidates)) == 0:
+    if sum((num_tier1, num_tier2, num_other, cip_candidates, num_tiera_sv)) == 0:
         return True
     return False
 
@@ -177,7 +214,7 @@ def group_cases():
         # Check if case is a negneg
         # Some very old pilot cases have broken formatting causing error here, so catch these with try/except
         try:
-            negneg = is_neg_neg(ir_json)
+            negneg = is_neg_neg(ir_json, ir_id, ir_version)
         except:
             grouped_cases['error'].append(case)
             continue
