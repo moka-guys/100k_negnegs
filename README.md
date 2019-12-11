@@ -1,8 +1,8 @@
-# 100k_negnegs v1.0
+# 100k_negnegs v1.1
 
 ## negneg_cases.py
 
-This script retrieves Guy's 100k cases from CIP-API that are ready for interpretation and groups them based on whether they are negative negative (i.e. no tier 1, 2 or CIP candidate variants) or not. This is to facilitate automated reporting for these cases.
+This script retrieves Guy's 100k cases from CIP-API that are ready for interpretation and groups them based on whether they are negative negative or not. A negative negative case is one which has no tier 1, 2 or CIP candidate variants, and no tier A CNVs/SVs with a GeL population frequency <1%. This is to facilitate automated reporting for these cases.
 
 Groups cases can be placed into are:
 * `negnegs_one_request`
@@ -14,7 +14,7 @@ Groups cases can be placed into are:
 * `all_other`
     * Everything else (cases with tier 1/2 or CIP candidate variants end up here).
 
-The script outputs a tsv file containing participant ID, interpretation request ID, and the group the case belongs to.
+The script outputs a tsv file containing participant ID, interpretation request ID, genome assembly, and the group the case belongs to.
 
 ### Usage
 
