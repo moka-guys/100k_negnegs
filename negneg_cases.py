@@ -140,7 +140,7 @@ def rare_tierA_SVs(interpreted_genome_json):
 
 def is_neg_neg(ir_json, ir_id, ir_version):
     """
-    Checks if a case is a negative negative (no variants other than tier 3)
+    Checks if a case is a negative negative (no variants other than tier 3, no rare tier A CNVs, no case flags (tags))
     Args:
         ir_json: Interpretation request JSON from the CIP-API
         ir_id: Interpretation request ID
@@ -170,7 +170,7 @@ def is_neg_neg(ir_json, ir_id, ir_version):
             max_version = max(vars_by_cip[cip].keys())
             cip_candidates += len(vars_by_cip[cip][max_version])
     # Return true if it's a negative negative, otherwise return false.
-    if sum((num_tier1, num_tier2, num_other, cip_candidates, num_tiera_sv)) == 0:
+    if sum(num_tier1, num_tier2, num_other, cip_candidates, num_tiera_sv, len(ir_json['tags'])) == 0:
         return True
     return False
 
@@ -235,13 +235,13 @@ def main():
     out_file = args.output_file
     # Open output file and write headers
     with open(out_file, 'w') as output_file:
-        output_file.write('participant_ID\tCIP_ID\tassembly\tgroup\n')
+        output_file.write('participant_ID\tCIP_ID\tassembly\tflags\tgroup\n')
         # Group cases according to variants found in CIP-API
         grouped_cases = group_cases()
         # Write the results to a tab separated file
         for group in grouped_cases.keys():
             for case in grouped_cases[group]:
-                output_file.write(f"{case['proband']}\t{case['interpretation_request_id']}\t{case['assembly']}\t{group}\n")
+                output_file.write(f"{case['proband']}\t{case['interpretation_request_id']}\t{case['assembly']}\t{';'.join(case['tags'])}\t{group}\n")
 
 if __name__ == '__main__':
     main()
