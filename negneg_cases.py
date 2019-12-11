@@ -1,5 +1,5 @@
 """
-v1.0 - AB 2019/01/29
+v1.1 - AB 2019/12/11
 Requirements:
     Python 3.6
     JellyPy
@@ -42,7 +42,6 @@ def group_vars_by_cip(interpreted_genomes_json):
         interpreted_genomes_json: interpreted genome JSON from CIP API
     Returns:
         Nested dictionary of variants grouped by CIP and cip version. {key = CIP value = {key = cip_version, value = list_of_variants}}
-
     """
     # Note this does not pull out CNVs/SVs
     vars_by_cip = {}
@@ -54,15 +53,20 @@ def group_vars_by_cip(interpreted_genomes_json):
         ig_obj = InterpretedGenome.fromJsonDict(ig['interpreted_genome_data'])
         # cip provider stored in the interpretationService field.
         # Store the list of reported variants for that cip
+        cip = ig_obj.interpretationService.lower()
+        cip_version = int(ig['cip_version'])
+        # If cip not already in dictionary, add it in with an empty dictionary as value
+        vars_by_cip[cip] = vars_by_cip.setdefault(cip, {})
+        # If CIP is present multiple times each should have it's own version number
+        # However do a quick test to make sure this is true and error out if not
+        if cip_version in vars_by_cip[cip]:
+            sys.exit(f"Multiple interpreted genomes with version number '{cip_version}' for interpretation service '{cip}'")
+        # If there are variants, add the variant list for that cip/version to dictionary.
         if ig_obj.variants:
-            cip = ig_obj.interpretationService.lower()
-            cip_version = int(ig['cip_version'])
-            # If cip not already in dictionary, add it in with an empty dictionary as value
-            vars_by_cip[cip] = vars_by_cip.setdefault(cip, {})
-            # Add the variants for that cip/version to dictionary.
-            # If the same cip/version is already there (shouldn't ever happen but just a failsafe)
-            # append to the existing list instead of overwriting.
-            vars_by_cip[cip][cip_version] = vars_by_cip[cip].setdefault(cip_version, []) + ig_obj.variants
+            vars_by_cip[cip][cip_version] = ig_obj.variants
+        # If there aren't any variants just store empty list
+        else:
+            vars_by_cip[cip][cip_version] = []
     return vars_by_cip
 
 
