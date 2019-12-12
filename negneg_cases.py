@@ -137,6 +137,30 @@ def rare_tierA_SVs(interpreted_genome_json):
                             added_tiera_list = True
     return tiera_svs
 
+def tiered_STRs(interpreted_genome_json):
+    """
+    Returns list of tiered short tandem repeats (STRs) for a case.
+    Repeats in the pathogenic range are reported as Tier 1. Repeats in the intermediate range are reported as Tier 2.
+    Repeats in the normal range are not reported.
+    Args:
+        interpreted_genomes_json: interpreted genome JSON from CIP API
+    Returns:
+        List of GeL report model v6 ShortTandemRepeat objects
+    """
+    # List to hold rare (<1%) tier A SVs
+    tiered_strs = []
+    ig_obj = InterpretedGenome.fromJsonDict(interpreted_genome_json['interpreted_genome_data'])
+    if ig_obj.shortTandemRepeats:
+        # GeL only report STRs since GeL tiering version 1.0.14, so ignore any earlier versions
+        if StrictVersion(ig_obj.softwareVersions["gel-tiering"]) >= StrictVersion('1.0.14'): 
+            for str in ig_obj.shortTandemRepeats:
+                added_tiered_strs = False
+                for event in sv.reportEvents:
+                    if event.tier in ('TIER1', 'TIER2') and not added_tiera_list:
+                        tiered_strs.append(str)
+                        added_tiera_list = True
+    return tiered_strs
+
 
 def is_neg_neg(ir_json, ir_id, ir_version):
     """
@@ -155,13 +179,18 @@ def is_neg_neg(ir_json, ir_id, ir_version):
     max_version = max(vars_by_cip['genomics_england_tiering'].keys())
     # Group variants from genomics_england_tiering by tier
     gel_tiered_vars = group_vars_by_tier(vars_by_cip['genomics_england_tiering'][max_version])
+    # Get latest genomics england tiering interpreted genome
+    ig = get_interpreted_genome_for_case(ir_id, ir_version, 'genomics_england_tiering')
     # Get rare (<1%) tier A SVs
-    rare_tiera_SV_list = rare_tierA_SVs(get_interpreted_genome_for_case(ir_id, ir_version, 'genomics_england_tiering')) 
+    rare_tiera_SV_list = rare_tierA_SVs(ig)
+    # Get tier 1/2 STRs
+    tiered_STR_list = tiered_STRs(ig)
     # negneg if no non-tier3 or cip candidate variants
     num_tier1 = len(gel_tiered_vars['TIER1'])
     num_tier2 = len(gel_tiered_vars['TIER2'])
     num_other = len(gel_tiered_vars['OTHER'])
     num_tiera_sv = len(rare_tiera_SV_list)
+    num_tiered_strs = len(tiered_STR_list)
     # Initialise cip_candidates variable to zero, then loop through cips counting variants
     cip_candidates = 0
     for cip in vars_by_cip:
@@ -170,7 +199,7 @@ def is_neg_neg(ir_json, ir_id, ir_version):
             max_version = max(vars_by_cip[cip].keys())
             cip_candidates += len(vars_by_cip[cip][max_version])
     # Return true if it's a negative negative, otherwise return false.
-    if sum((num_tier1, num_tier2, num_other, cip_candidates, num_tiera_sv, len(ir_json['tags']))) == 0:
+    if sum((num_tier1, num_tier2, num_other, cip_candidates, num_tiera_sv, num_tiered_strs, len(ir_json['tags']))) == 0:
         return True
     return False
 
