@@ -170,7 +170,7 @@ def is_neg_neg(ir_json, ir_id, ir_version):
             max_version = max(vars_by_cip[cip].keys())
             cip_candidates += len(vars_by_cip[cip][max_version])
     # Return true if it's a negative negative, otherwise return false.
-    if sum(num_tier1, num_tier2, num_other, cip_candidates, num_tiera_sv, len(ir_json['tags'])) == 0:
+    if sum((num_tier1, num_tier2, num_other, cip_candidates, num_tiera_sv, len(ir_json['tags']))) == 0:
         return True
     return False
 
