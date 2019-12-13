@@ -190,12 +190,13 @@ def is_neg_neg(ir_json, ir_id, ir_version):
     rare_tiera_SV_list = rare_tierA_SVs(ig)
     # Get tier 1/2 STRs
     tiered_STR_list = tiered_STRs(ig)
-    # negneg if no non-tier3 or cip candidate variants
+    # negneg if no non-tier3 or cip candidate variants, no rare tier A SV/CNVs, no tiered STRs, and no case flags (e.g. UPD)
     num_tier1 = len(gel_tiered_vars['TIER1'])
     num_tier2 = len(gel_tiered_vars['TIER2'])
     num_other = len(gel_tiered_vars['OTHER'])
     num_tiera_sv = len(rare_tiera_SV_list)
     num_tiered_strs = len(tiered_STR_list)
+    num_case_flags = len(ir_json['tags'])
     # Initialise cip_candidates variable to zero, then loop through cips counting variants
     cip_candidates = 0
     for cip in vars_by_cip:
@@ -204,7 +205,7 @@ def is_neg_neg(ir_json, ir_id, ir_version):
             max_version = max(vars_by_cip[cip].keys())
             cip_candidates += len(vars_by_cip[cip][max_version])
     # Return true if it's a negative negative, otherwise return false.
-    if sum((num_tier1, num_tier2, num_other, cip_candidates, num_tiera_sv, num_tiered_strs, len(ir_json['tags']))) == 0:
+    if sum((num_tier1, num_tier2, num_other, cip_candidates, num_tiera_sv, num_tiered_strs, num_case_flags)) == 0:
         return True
     return False
 
