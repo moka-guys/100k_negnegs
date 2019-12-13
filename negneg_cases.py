@@ -147,7 +147,7 @@ def tiered_STRs(interpreted_genome_json):
     Returns:
         List of GeL report model v6 ShortTandemRepeat objects
     """
-    # List to hold rare (<1%) tier A SVs
+    # List to hold tiered STRs
     tiered_strs = []
     ig_obj = InterpretedGenome.fromJsonDict(interpreted_genome_json['interpreted_genome_data'])
     if ig_obj.shortTandemRepeats:
