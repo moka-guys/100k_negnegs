@@ -224,9 +224,6 @@ def group_cases():
     num_requests = collections.Counter([case['proband'] for case in sent_to_gmcs + report_generated + report_sent])
     # Filter cases that are awaiting interpretation to only include Guys cases
     guys_cases = (case for case in sent_to_gmcs if ('RJ1' in case['sites'] or 'RJ101' in case['sites'] or 'GSTT' in case['sites']))
-    guys_cases = [case for case in sent_to_gmcs if ('RJ1' in case['sites'] or 'RJ101' in case['sites'] or 'GSTT' in case['sites'])]
-    guys_cases.reverse()
-    guys_cases = guys_cases[:10]
     # Cases will be grouped as below.
     # 'negnegs_one_request' = negneg cases where there are no other ongoing or reported interpretation requests for that patient - can be reported automatically
     # 'negnegs_multiple_requests' = negneg cases where there are other active or reported interpretation requests for that patient (which may not be negneg)
