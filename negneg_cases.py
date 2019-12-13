@@ -121,6 +121,8 @@ def rare_tierA_SVs(interpreted_genome_json):
         # GeL only report SVs since GeL tiering version 1.0.14, so ignore any earlier versions
         if StrictVersion(ig_obj.softwareVersions["gel-tiering"]) >= StrictVersion('1.0.14'): 
             for sv in ig_obj.structuralVariants:
+                # Each variant can have multiple report events, each with it's own tier
+                # Only want to add variant to list once, so use flag to prevent it being added multiple times
                 added_tiera_list = False
                 for event in sv.reportEvents:
                     if event.tier == 'TIERA' and not added_tiera_list:
@@ -153,12 +155,14 @@ def tiered_STRs(interpreted_genome_json):
     if ig_obj.shortTandemRepeats:
         # GeL only report STRs since GeL tiering version 1.0.14, so ignore any earlier versions
         if StrictVersion(ig_obj.softwareVersions["gel-tiering"]) >= StrictVersion('1.0.14'): 
-            for str in ig_obj.shortTandemRepeats:
+            for repeat in ig_obj.shortTandemRepeats:
+                # Each variant can have multiple report events, each with it's own tier
+                # Only want to add variant to list once, so use flag to prevent it being added multiple times
                 added_tiered_strs = False
-                for event in sv.reportEvents:
-                    if event.tier in ('TIER1', 'TIER2') and not added_tiera_list:
-                        tiered_strs.append(str)
-                        added_tiera_list = True
+                for event in repeat.reportEvents:
+                    if event.tier in ('TIER1', 'TIER2') and not added_tiered_strs:
+                        tiered_strs.append(repeat)
+                        added_tiered_strs = True
     return tiered_strs
 
 
