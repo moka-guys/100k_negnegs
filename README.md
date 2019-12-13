@@ -19,7 +19,7 @@ Groups cases can be placed into are:
 * `all_other`
     * Everything else (e.g. cases with tier 1/2 or CIP candidate variants end up here).
 
-The script outputs a tsv file containing participant ID, interpretation request ID, genome assembly, and the group the case belongs to.
+The script outputs a tsv file containing participant ID, interpretation request ID, genome assembly, case flags and the group the case belongs to.
 
 ### Usage
 
