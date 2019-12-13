@@ -17,11 +17,12 @@ optional arguments:
 """
 
 import argparse
-from distutils.version import StrictVersion
-from pyCIPAPI.interpretation_requests import get_interpretation_request_json, get_interpreted_genome_for_case, get_interpretation_request_list
-# Import InterpretedGenome from GeLReportModels v6.0
-from protocols.reports_6_0_0 import InterpretedGenome
-from collections import Counter
+import distutils.version
+# Import JellyPy
+import pyCIPAPI.interpretation_requests
+# Import GeLReportModels v6.0
+import protocols.reports_6_0_0
+import collections
 
 
 def process_arguments():
@@ -51,7 +52,7 @@ def group_vars_by_cip(interpreted_genomes_json):
     # There will be a separate interepreted genome for each cip used
     for ig in interpreted_genomes_json:
         # Convert the interpreted genome JSON into InterpretedGenome object from GeL Report Models v6.0
-        ig_obj = InterpretedGenome.fromJsonDict(ig['interpreted_genome_data'])
+        ig_obj = protocols.reports_6_0_0.InterpretedGenome.fromJsonDict(ig['interpreted_genome_data'])
         # cip provider stored in the interpretationService field.
         # Store the list of reported variants for that cip
         cip = ig_obj.interpretationService.lower()
@@ -116,10 +117,10 @@ def rare_tierA_SVs(interpreted_genome_json):
     """
     # List to hold rare (<1%) tier A SVs
     tiera_svs = []
-    ig_obj = InterpretedGenome.fromJsonDict(interpreted_genome_json['interpreted_genome_data'])
+    ig_obj = protocols.reports_6_0_0.InterpretedGenome.fromJsonDict(interpreted_genome_json['interpreted_genome_data'])
     if ig_obj.structuralVariants:
         # GeL only report SVs since GeL tiering version 1.0.14, so ignore any earlier versions
-        if StrictVersion(ig_obj.softwareVersions["gel-tiering"]) >= StrictVersion('1.0.14'): 
+        if distutils.version.StrictVersion(ig_obj.softwareVersions["gel-tiering"]) >= distutils.version.StrictVersion('1.0.14'): 
             for sv in ig_obj.structuralVariants:
                 # Each variant can have multiple report events, each with it's own tier
                 # Only want to add variant to list once, so use flag to prevent it being added multiple times
@@ -151,10 +152,10 @@ def tiered_STRs(interpreted_genome_json):
     """
     # List to hold tiered STRs
     tiered_strs = []
-    ig_obj = InterpretedGenome.fromJsonDict(interpreted_genome_json['interpreted_genome_data'])
+    ig_obj = protocols.reports_6_0_0.InterpretedGenome.fromJsonDict(interpreted_genome_json['interpreted_genome_data'])
     if ig_obj.shortTandemRepeats:
         # GeL only report STRs since GeL tiering version 1.0.14, so ignore any earlier versions
-        if StrictVersion(ig_obj.softwareVersions["gel-tiering"]) >= StrictVersion('1.0.14'): 
+        if distutils.version.StrictVersion(ig_obj.softwareVersions["gel-tiering"]) >= distutils.version.StrictVersion('1.0.14'): 
             for repeat in ig_obj.shortTandemRepeats:
                 # Each variant can have multiple report events, each with it's own tier
                 # Only want to add variant to list once, so use flag to prevent it being added multiple times
@@ -184,7 +185,7 @@ def is_neg_neg(ir_json, ir_id, ir_version):
     # Group variants from genomics_england_tiering by tier
     gel_tiered_vars = group_vars_by_tier(vars_by_cip['genomics_england_tiering'][max_version])
     # Get latest genomics england tiering interpreted genome
-    ig = get_interpreted_genome_for_case(ir_id, ir_version, 'genomics_england_tiering')
+    ig = pyCIPAPI.interpretation_requests.get_interpreted_genome_for_case(ir_id, ir_version, 'genomics_england_tiering')
     # Get rare (<1%) tier A SVs
     rare_tiera_SV_list = rare_tierA_SVs(ig)
     # Get tier 1/2 STRs
@@ -215,13 +216,16 @@ def group_cases():
         Dictionary of grouped cases {key = group, value = list of case JSONs from CIP-API}
     """
     # Pull out all cases that are either ready for interpretation or have been reported
-    sent_to_gmcs = get_interpretation_request_list(last_status='sent_to_gmcs', sample_type='raredisease')
-    report_generated = get_interpretation_request_list(last_status='report_generated', sample_type='raredisease')
-    report_sent = get_interpretation_request_list(last_status='report_sent', sample_type='raredisease')
+    sent_to_gmcs = pyCIPAPI.interpretation_requests.get_interpretation_request_list(last_status='sent_to_gmcs', sample_type='raredisease')
+    report_generated = pyCIPAPI.interpretation_requests.get_interpretation_request_list(last_status='report_generated', sample_type='raredisease')
+    report_sent = pyCIPAPI.interpretation_requests.get_interpretation_request_list(last_status='report_sent', sample_type='raredisease')
     # Count number of times each proband ID occurs and store in dictionary (key = proband ID, value = count), used later to identify cases with multiple interpretation requests.
-    num_requests = Counter([case['proband'] for case in sent_to_gmcs + report_generated + report_sent])
+    num_requests = collections.Counter([case['proband'] for case in sent_to_gmcs + report_generated + report_sent])
     # Filter cases that are awaiting interpretation to only include Guys cases
     guys_cases = (case for case in sent_to_gmcs if ('RJ1' in case['sites'] or 'RJ101' in case['sites'] or 'GSTT' in case['sites']))
+    guys_cases = [case for case in sent_to_gmcs if ('RJ1' in case['sites'] or 'RJ101' in case['sites'] or 'GSTT' in case['sites'])]
+    guys_cases.reverse()
+    guys_cases = guys_cases[:10]
     # Cases will be grouped as below.
     # 'negnegs_one_request' = negneg cases where there are no other ongoing or reported interpretation requests for that patient - can be reported automatically
     # 'negnegs_multiple_requests' = negneg cases where there are other active or reported interpretation requests for that patient (which may not be negneg)
@@ -240,7 +244,7 @@ def group_cases():
         participant_id = case['proband']
         # Return JSON from CIP API, use report models v6
         try:
-            ir_json = get_interpretation_request_json(ir_id, ir_version, reports_v6=True)
+            ir_json = pyCIPAPI.interpretation_requests.get_interpretation_request_json(ir_id, ir_version, reports_v6=True)
         except:
             grouped_cases['error'].append(case)
             continue
