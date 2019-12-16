@@ -7,7 +7,6 @@ This script retrieves Guy's 100k cases from CIP-API that are ready for interpret
 - no tier A CNVs/SVs with a GeL population frequency <1%
 - no tier 1 or 2 short tandem repeats (STRs)
 - no case flags (these can indicate important information about a case such as suspected uniparental disomy, so should be reviewed manually)
-NOTE!!! We currently do not have any cases returned from GeL that have STRs, therefore the part of this code that checks for STRs has not been properly tested yet.
 
 Groups cases can be placed into are:
 * `negnegs_one_request`
