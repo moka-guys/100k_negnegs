@@ -86,12 +86,11 @@ class MokaConnector(object):
     Connection to Moka database for use by other functions
     """
     def __init__(self):
-        self.cnxn = pyodbc.connect('DRIVER={{SQL Server}}; SERVER={server}; DATABASE={database};'.format(
-            server=config.get("MOKA", "SERVER"),
-            database=config.get("MOKA", "DATABASE")
-            ), 
+        self.cnxn = pyodbc.connect(
+            f'DRIVER={{ODBC Driver 17 for SQL Server}}; SERVER={config.get("MOKA", "SERVER")}; DATABASE={config.get("MOKA", "DATABASE")}; '
+            f'UID={config.get("MOKA", "USER")}; PWD={config.get("MOKA", "PASSWORD")}', 
             autocommit=True
-        )
+            )
         self.cursor = self.cnxn.cursor()
 
     def __del__(self):
@@ -161,8 +160,7 @@ class Case100kMoka(object):
                 status=status,
                 ngstestid=ngstest.NGSTestID,
                 )
-            #cursor.execute(sql)
-            print(sql)
+            cursor.execute(sql)
             # Get the human readable result code for recording in patient log
             sql = "SELECT ResultCode FROM ResultCode WHERE ResultCodeID = {resultcode}".format(resultcode=resultcode)
             resultcode_name = cursor.execute(sql).fetchone().ResultCode
@@ -183,8 +181,7 @@ class Case100kMoka(object):
                     username=os.path.basename(__file__),
                     computer=socket.gethostname()
                     )
-            #cursor.execute(sql)
-            print(sql)
+            cursor.execute(sql)
                  
     def get_moka_details(self, cursor):
         """
