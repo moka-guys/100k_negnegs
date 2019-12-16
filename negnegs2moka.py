@@ -161,7 +161,8 @@ class Case100kMoka(object):
                 status=status,
                 ngstestid=ngstest.NGSTestID,
                 )
-            cursor.execute(sql)
+            #cursor.execute(sql)
+            print(sql)
             # Get the human readable result code for recording in patient log
             sql = "SELECT ResultCode FROM ResultCode WHERE ResultCodeID = {resultcode}".format(resultcode=resultcode)
             resultcode_name = cursor.execute(sql).fetchone().ResultCode
@@ -182,7 +183,8 @@ class Case100kMoka(object):
                     username=os.path.basename(__file__),
                     computer=socket.gethostname()
                     )
-            cursor.execute(sql)
+            #cursor.execute(sql)
+            print(sql)
                  
     def get_moka_details(self, cursor):
         """
@@ -260,7 +262,7 @@ def main():
     args = process_arguments()
     # Raise error if file doesn't start with expected header row
     with open(args.input_file, 'r') as file_to_check:
-        if not file_to_check.read().startswith('participant_ID\tCIP_ID\tgroup'):
+        if not file_to_check.read().startswith('participant_ID\tCIP_ID\tassembly\tflags\tgroup'):
             sys.exit('Input file does not contain expected header row. Exiting')
     # Create a list of 100k case objects for negneg cases with only one interpretation request
     negnegs = negnegs_one_request(args.input_file)
