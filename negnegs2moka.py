@@ -168,7 +168,8 @@ class Case100kMoka(object):
             # Get the human readable status for recording in patient log
             sql = "SELECT Status FROM Status WHERE StatusID = {status}".format(status=status)
             status_name = cursor.execute(sql).fetchone().Status
-            # Update the patient log
+            # Record in patient log
+            # Use the name of the script as 'Login' and the server hostname as 'PCName'
             sql = (
                 "INSERT INTO PatientLog (InternalPatientID, LogEntry, Date, Login, PCName) "
                 "VALUES ({internalPatientID},  'NGS: NGSTest result code updated to {resultcode_name} and status updated to {status_name} for 100k interpretation request: {intrequestID}', '{today_date}', '{username}', '{computer}');"
