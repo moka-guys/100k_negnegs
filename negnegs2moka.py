@@ -1,8 +1,8 @@
 """
-v1.0 - AB 2019/03/12
+v1.1 - AB 2019/12/16
 Requirements:
     ODBC connection to Moka
-    Python 2.7
+    Python 3.6
     pyodbc
 
 usage: negnegs2moka.py [-h] -i INPUT_FILE -o OUTPUT_FILE
@@ -17,9 +17,10 @@ optional arguments:
                         tab-separated log file
 """
 import argparse
-from ConfigParser import ConfigParser
+from configparser import ConfigParser
 import os
 import sys
+import socket
 import pyodbc
 import datetime
 
@@ -33,7 +34,7 @@ def process_arguments():
     """
     # Create ArgumentParser object. Description message will be displayed as part of help message if script is run with -h flag
     parser = argparse.ArgumentParser(description='Parses output from negneg_cases.py and books negnegs into Moka')
-    # Define the arguments that will be taken. nargs='+' allows multiple NGSTestIDs from NGSTest table in Moka can be passed as arguments.
+    # Define the arguments that will be taken.
     parser.add_argument('-i', '--input_file', required=True, help='output from negneg_cases.py')
     parser.add_argument('-o', '--output_file', required=True, help='tab-separated log file')
     # Return the arguments
@@ -177,8 +178,8 @@ class Case100kMoka(object):
                     status_name=status_name,
                     intrequestID=self.intrequestID,
                     today_date=datetime.datetime.now().strftime(r'%Y%m%d %H:%M:%S %p'),
-                    username=os.getenv('username'),
-                    computer=os.getenv('computername')
+                    username=os.path.basename(__file__),
+                    computer=socket.gethostname()
                     )
             cursor.execute(sql)
                  
@@ -189,52 +190,6 @@ class Case100kMoka(object):
         self.get_moka_patientIDs(cursor)
         self.get_moka_ngstests(cursor)
         self.get_patient_status(cursor)
-
-    def add_ngstest(self, cursor, resultcode):
-        """
-        Create an NGStest in Moka for the case
-        """
-        # Check that we have a patient and referring clinician ID
-        if self.internalPatientID and self.clinicianID:
-            # If patient status isn't already 100K, update it to 100K and record in patient log
-            if self.patient_status != 1202218839:                                
-                # Update patient status to 100K
-                sql = "UPDATE Patients SET s_StatusOverall = 1202218839 WHERE InternalPatientID = {internalPatientID}".format(internalPatientID=self.internalPatientID)
-                cursor.execute(sql)
-                # Patient Log
-                sql = (
-                    "INSERT INTO PatientLog (InternalPatientID, LogEntry, Date, Login, PCName) "
-                    "VALUES ({internalPatientID}, 'Patients: Status changed to 100K', '{today_date}', '{username}', '{computer}');"
-                    ).format(
-                        internalPatientID=self.internalPatientID,
-                        today_date=datetime.datetime.now().strftime(r'%Y%m%d %H:%M:%S %p'),
-                        username=os.getenv('username'),
-                        computer=os.getenv('computername')
-                        )
-                cursor.execute(sql)
-            # Create NGStest and record in patient log - put Moka in as Check1
-            sql = (
-                "INSERT INTO NGSTest (InternalPatientID, ReferralID, StatusID, DateRequested, BookBy, BookingAuthorisedByID, Service, GELProbandID, IRID, ResultCode, Check1ID, Check1Date) "
-                "Values ({internalPatientID}, 1199901218, 1202218811, '{today_date}', '{clinicianID}', 1201865434, 0, '{participantID}', '{intrequestID}', {resultcode}, 1201865448, '{today_date}');"
-                ).format(
-                    internalPatientID=self.internalPatientID,
-                    today_date=datetime.datetime.now().strftime(r'%Y%m%d %H:%M:%S %p'),
-                    clinicianID=self.clinicianID,
-                    participantID=self.participantID,
-                    intrequestID=self.intrequestID,
-                    resultcode=resultcode
-                    )
-            cursor.execute(sql)
-            sql = (
-                "INSERT INTO PatientLog (InternalPatientID, LogEntry, Date, Login, PCName) "
-                "VALUES ({internalPatientID}, 'NGS: GeL test request added.', '{today_date}', '{username}', '{computer}');"
-                ).format(
-                    internalPatientID=self.internalPatientID,
-                    today_date=datetime.datetime.now().strftime(r'%Y%m%d %H:%M:%S %p'),
-                    username=os.getenv('username'),
-                    computer=os.getenv('computername')
-                    )
-            cursor.execute(sql)
 
 def negnegs_one_request(input_file):
     with open(input_file, 'r') as input_cases:
@@ -275,9 +230,9 @@ def book_in_moka(cases, mokaconn, log_file):
             # If there are multiple 100k NGS requests for that patient, print error to log file
             print_log(log_file, case.participantID, case.intrequestID, case.pru, "ERROR", "Multiple 100k NGStest request found for this patient")        
         elif len(case.ngstests) < 1:
-            # If there are currently no NGStest requests in Moka, create one from scratch...
-            case.add_ngstest(mokaconn.cursor, 1189679668)
-            print_log(log_file, case.participantID, case.intrequestID, case.pru, "SUCCESS", "Created new NGSTest request")
+            # Cases should have already been booked in using the script found in https://github.com/moka-guys/100k_moka_booking_in
+            # If case not found in Moka, error and skip to next case
+            print_log(log_file, case.participantID, case.intrequestID, case.pru, "ERROR", "No NGSTest request found. Please run 100k_moka_booking_in/100k2moka.py script first")
         # If there's already one 100k NGS request in Moka...       
         elif len(case.ngstests) == 1:
             ngstest = case.ngstests[0]

@@ -45,21 +45,29 @@ python /usr/local/src/mokaguys/Apps/100k_negnegs/negneg_cases.py -i INPUT_FILE
 
 ## negnegs2moka.py
 
-This script parses the ouput from negneg_cases.py and creates/updates NGStest requests for the negneg cases in Moka, assigning negneg (NN) as the result code and entering 'Moka' as the first checker. It only books in cases if there is a single interpretation request (the `negnegs_one_request` group) found in the CIP-API. If there is an existing 100k NGStest already in Moka for a patient, providing there is only one test and all the details are as expected, the result code will be updated to negneg (NN) and 'Moka' entered as the first checker.
+This script is designed to be run after [100k_negnegs/negneg_cases.py](https://github.com/moka-guys/100k_negnegs) has been run to generate a list of categorised 100k cases, and [100k_moka_booking_in/100k2moka.py](https://github.com/moka-guys/100k_moka_booking_in) has been run to book all cases into Moka.
+
+This script uses the ouput from [100k_negnegs/negneg_cases.py](https://github.com/moka-guys/100k_negnegs) to update case details for the negneg cases in Moka ready for automatic reporting, assigning negneg (NN) as the result code and entering 'Moka' as the first checker. It only books in cases if there is a single interpretation request (the `negnegs_one_request` group) found in the CIP-API.
 
 The script outputs a tab seperated logfile, showing the action performed on each case, and flagging cases that couldn't be entered to Moka and the reason why.
 
 
 ### Usage
 
-This script requires access to Moka via ODBC, which currently means it must be run from Trust Windows machines.
+This script requires access to Moka via ODBC.
 
 Requirements:
     ODBC connection to Moka
-    Python 2.7
+    Python 3.6
     pyodbc
 
-The python installation in Genetics_Data2 contains all required packages.
+On `SV-PR-GENAPP01` activate the `100k_negnegs` conda environment so that above requirements are met:
+
+```
+conda activate `100k_negnegs`
+```
+
+Run the script:
 
 ```
 python negnegs2moka.py -i INPUT_FILE -o OUTPUT_FILE
