@@ -1,8 +1,12 @@
-# 100k_negnegs v1.0
+# 100k_negnegs v1.1
 
 ## negneg_cases.py
 
-This script retrieves Guy's 100k cases from CIP-API that are ready for interpretation and groups them based on whether they are negative negative (i.e. no tier 1, 2 or CIP candidate variants) or not. This is to facilitate automated reporting for these cases.
+This script retrieves Guy's 100k cases from CIP-API that are ready for interpretation and groups them based on whether they are negative negative or not (this is to facilitate automated reporting for these cases). As of v1.1 of this script, a negative negative case is one which has:
+- no tier 1, 2 or CIP candidate variants
+- no tier A CNVs/SVs with a GeL population frequency <1%
+- no tier 1 or 2 short tandem repeats (STRs)
+- no case flags (these can indicate important information about a case such as suspected uniparental disomy, so should be reviewed manually)
 
 Groups cases can be placed into are:
 * `negnegs_one_request`
@@ -12,9 +16,9 @@ Groups cases can be placed into are:
 * `error`
     * Error encountered when trying to parse the CIP-API data for this case. Some early pilot cases have broken formatting so they end up here.
 * `all_other`
-    * Everything else (cases with tier 1/2 or CIP candidate variants end up here).
+    * Everything else (e.g. cases with tier 1/2 or CIP candidate variants end up here).
 
-The script outputs a tsv file containing participant ID, interpretation request ID, and the group the case belongs to.
+The script outputs a tsv file containing participant ID, interpretation request ID, genome assembly, case flags and the group the case belongs to.
 
 ### Usage
 
@@ -24,19 +28,19 @@ Requirements:
 
 * Python 3.6
 * Access to CIPAPI
-* JellyPy (in PYTHONPATH)
-* GelReportModels (v6 or higher)
+* JellyPy
+* GelReportModels
 
-On `SV-TE-GENAPP01` activate the `jellypy_py3` conda environment so that above requirements are met:
+On `SV-PR-GENAPP01` activate the `100k_negnegs` conda environment so that above requirements are met:
 
 ```
-source activate jellypy_py3
+conda activate `100k_negnegs`
 ```
 
 Run the script:
 
 ```
-python /home/mokaguys/Apps/100k_negnegs/negneg_cases.py -i INPUT_FILE
+python /usr/local/src/mokaguys/Apps/100k_negnegs/negneg_cases.py -i INPUT_FILE
 ```
 
 ## negnegs2moka.py
