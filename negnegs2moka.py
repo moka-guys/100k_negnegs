@@ -88,7 +88,7 @@ class MokaConnector(object):
     def __init__(self):
         self.cnxn = pyodbc.connect(
             f'DRIVER={{ODBC Driver 17 for SQL Server}}; SERVER={config.get("MOKA", "SERVER")}; DATABASE={config.get("MOKA", "DATABASE")}; '
-            f'UID={config.get("MOKA", "USER")}; PWD={config.get("MOKA", "PASSWORD")}', 
+            f'UID={config.get("MOKA", "USER")}; PWD={config.get("MOKA", "PASSWORD")}',
             autocommit=True
             )
         self.cursor = self.cnxn.cursor()
